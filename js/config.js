@@ -73,6 +73,9 @@ const CONFIG = {
         { name: '粉狐', color: '#FF66AA' },
     ],
     
+    // 压注系统
+    BETTING_TIME: 30,       // 压注倒计时（秒）
+    
     // 游戏速度（毫秒/回合）
     TICK_SPEEDS: [500, 300, 150, 80, 40],
     DEFAULT_SPEED_INDEX: 1,

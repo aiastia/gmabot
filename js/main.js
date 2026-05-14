@@ -1,5 +1,12 @@
 // 游戏主入口和主循环
 
+// 游戏阶段
+const GAME_PHASE = {
+    BETTING: 'betting',   // 压注阶段
+    PLAYING: 'playing',   // 战斗阶段
+    RESULT: 'result',     // 结算阶段
+};
+
 class Game {
     constructor() {
         // 游戏系统
@@ -18,6 +25,13 @@ class Game {
         this.winner = null;
         this.paused = false;
         this.speedIndex = CONFIG.DEFAULT_SPEED_INDEX;
+        this.phase = GAME_PHASE.BETTING;
+        
+        // 压注系统
+        this.betTarget = null;       // 压注的角色ID
+        this.betCountdown = CONFIG.BETTING_TIME;
+        this.betTimer = null;
+        this.betResult = null;       // 'win' | 'lose' | null
         
         // 定时器
         this.tickTimer = null;
@@ -25,6 +39,7 @@ class Game {
         // 初始化
         this._initEntities();
         this._setupControls();
+        this._setupBettingControls();
         this._startGame();
     }
     
@@ -44,6 +59,10 @@ class Game {
         this.turn = 0;
         this.gameOver = false;
         this.winner = null;
+        this.phase = GAME_PHASE.BETTING;
+        this.betTarget = null;
+        this.betCountdown = CONFIG.BETTING_TIME;
+        this.betResult = null;
         this.combatSystem.logs = [];
         this.combatSystem.floatingTexts = [];
         
@@ -61,26 +80,60 @@ class Game {
         // 生成物品
         this.itemManager.generate(this.grid);
         
-        // 开始初始日志
+        // 开始日志
         this.combatSystem.logs.push({
             turn: 0,
-            text: '🎮 新游戏开始！8 位战士进入战场',
+            text: '🎮 新游戏开始！观察战场，选择你压注的战士！',
             color: '#FFD700',
             important: true,
         });
         
-        // 启动游戏循环
-        this._startTick();
+        // 启动压注倒计时
+        this._startBettingCountdown();
         
         // 启动渲染循环
         this._renderLoop();
+    }
+    
+    // 启动压注倒计时
+    _startBettingCountdown() {
+        if (this.betTimer) clearInterval(this.betTimer);
+        this.betCountdown = CONFIG.BETTING_TIME;
+        
+        this.betTimer = setInterval(() => {
+            if (this.phase !== GAME_PHASE.BETTING) return;
+            
+            this.betCountdown--;
+            
+            if (this.betCountdown <= 0) {
+                clearInterval(this.betTimer);
+                this._startBattle();
+            }
+        }, 1000);
+    }
+    
+    // 开始战斗
+    _startBattle() {
+        this.phase = GAME_PHASE.PLAYING;
+        this.paused = false;
+        
+        this.combatSystem.logs.unshift({
+            turn: 0,
+            text: this.betTarget !== null 
+                ? `⚔️ 压注完成！战斗开始！你压了 ${this.entities[this.betTarget].name}`
+                : '⚔️ 未压注，观战模式！战斗开始！',
+            color: '#FFD700',
+            important: true,
+        });
+        
+        this._startTick();
     }
     
     // 启动回合定时器
     _startTick() {
         if (this.tickTimer) clearInterval(this.tickTimer);
         this.tickTimer = setInterval(() => {
-            if (!this.paused && !this.gameOver) {
+            if (!this.paused && !this.gameOver && this.phase === GAME_PHASE.PLAYING) {
                 this._gameTick();
             }
         }, CONFIG.TICK_SPEEDS[this.speedIndex]);
@@ -130,6 +183,12 @@ class Game {
         if (alive.length <= 1) {
             this.gameOver = true;
             this.winner = alive.length === 1 ? alive[0] : null;
+            this.phase = GAME_PHASE.RESULT;
+            
+            // 判断压注结果
+            if (this.betTarget !== null && this.winner) {
+                this.betResult = this.winner.id === this.betTarget ? 'win' : 'lose';
+            }
             
             if (this.winner) {
                 this.combatSystem.logs.unshift({
@@ -138,6 +197,22 @@ class Game {
                     color: this.winner.color,
                     important: true,
                 });
+                
+                if (this.betResult === 'win') {
+                    this.combatSystem.logs.unshift({
+                        turn: this.turn,
+                        text: `🎉 你的压注成功！${this.winner.name} 获胜！`,
+                        color: '#00FF88',
+                        important: true,
+                    });
+                } else if (this.betResult === 'lose') {
+                    this.combatSystem.logs.unshift({
+                        turn: this.turn,
+                        text: `😢 压注失败！你选的 ${this.entities[this.betTarget].name} 没能获胜`,
+                        color: '#FF4444',
+                        important: true,
+                    });
+                }
             } else {
                 this.combatSystem.logs.unshift({
                     turn: this.turn,
@@ -149,14 +224,14 @@ class Game {
         }
     }
     
-    // 渲染循环（独立于游戏回合，保持流畅）
+    // 渲染循环
     _renderLoop() {
         const gameState = this._getGameState();
         this.renderer.render(gameState);
         requestAnimationFrame(() => this._renderLoop());
     }
     
-    // 获取游戏状态（传给渲染器）
+    // 获取游戏状态
     _getGameState() {
         return {
             grid: this.grid,
@@ -168,7 +243,52 @@ class Game {
             winner: this.winner,
             paused: this.paused,
             speedIndex: this.speedIndex,
+            phase: this.phase,
+            betTarget: this.betTarget,
+            betCountdown: this.betCountdown,
+            betResult: this.betResult,
         };
+    }
+    
+    // 设置压注控制（鼠标点击）
+    _setupBettingControls() {
+        this.canvas = document.getElementById('gameCanvas');
+        
+        this.canvas.addEventListener('click', (e) => {
+            if (this.phase !== GAME_PHASE.BETTING) return;
+            
+            const rect = this.canvas.getBoundingClientRect();
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            
+            // 检查是否点击了角色选择区域（底部压注面板）
+            this._handleBettingClick(x, y);
+        });
+    }
+    
+    // 处理压注点击
+    _handleBettingClick(x, y) {
+        // 压注面板在地图区域底部
+        const panelY = this.renderer.mapHeight;
+        const panelHeight = this.renderer.logHeight;
+        
+        if (y < panelY || y > panelY + panelHeight) return;
+        
+        // 8 个角色卡片，均匀分布在底部
+        const cardWidth = this.renderer.mapWidth / 8;
+        const cardIndex = Math.floor(x / cardWidth);
+        
+        if (cardIndex >= 0 && cardIndex < this.entities.length) {
+            this.betTarget = cardIndex;
+            this.combatSystem.logs.unshift({
+                turn: 0,
+                text: `🎯 你压注了 ${this.entities[cardIndex].name}！`,
+                color: this.entities[cardIndex].color,
+                important: true,
+            });
+        }
     }
     
     // 设置控制
@@ -177,31 +297,49 @@ class Game {
             switch (e.key) {
                 case ' ':
                     e.preventDefault();
-                    this.paused = !this.paused;
+                    if (this.phase === GAME_PHASE.PLAYING) {
+                        this.paused = !this.paused;
+                    } else if (this.phase === GAME_PHASE.BETTING) {
+                        // 空格跳过压注倒计时
+                        clearInterval(this.betTimer);
+                        this._startBattle();
+                    }
                     break;
                 case 'r':
                 case 'R':
+                    if (this.betTimer) clearInterval(this.betTimer);
+                    if (this.tickTimer) clearInterval(this.tickTimer);
                     this._startGame();
                     break;
                 case '1':
-                    this.speedIndex = 0;
-                    this._startTick();
+                    if (this.phase === GAME_PHASE.PLAYING) {
+                        this.speedIndex = 0;
+                        this._startTick();
+                    }
                     break;
                 case '2':
-                    this.speedIndex = 1;
-                    this._startTick();
+                    if (this.phase === GAME_PHASE.PLAYING) {
+                        this.speedIndex = 1;
+                        this._startTick();
+                    }
                     break;
                 case '3':
-                    this.speedIndex = 2;
-                    this._startTick();
+                    if (this.phase === GAME_PHASE.PLAYING) {
+                        this.speedIndex = 2;
+                        this._startTick();
+                    }
                     break;
                 case '4':
-                    this.speedIndex = 3;
-                    this._startTick();
+                    if (this.phase === GAME_PHASE.PLAYING) {
+                        this.speedIndex = 3;
+                        this._startTick();
+                    }
                     break;
                 case '5':
-                    this.speedIndex = 4;
-                    this._startTick();
+                    if (this.phase === GAME_PHASE.PLAYING) {
+                        this.speedIndex = 4;
+                        this._startTick();
+                    }
                     break;
             }
         });

@@ -43,7 +43,7 @@ class Renderer {
         this._renderItems(ctx, gameState.itemManager);
         
         // 渲染实体
-        this._renderEntities(ctx, gameState.entities);
+        this._renderEntities(ctx, gameState.entities, gameState);
         
         // 渲染浮动文字
         this._renderFloatingTexts(ctx, gameState.combatSystem);
@@ -53,6 +53,11 @@ class Renderer {
         
         // 渲染底部日志
         this._renderLog(ctx, gameState.combatSystem, gameState.turn);
+        
+        // 渲染压注阶段覆盖
+        if (gameState.phase === 'betting') {
+            this._renderBettingUI(ctx, gameState);
+        }
         
         // 渲染游戏状态覆盖
         if (gameState.gameOver) {
@@ -233,7 +238,7 @@ class Renderer {
     }
     
     // 渲染实体
-    _renderEntities(ctx, entities) {
+    _renderEntities(ctx, entities, gameState) {
         for (const entity of entities) {
             if (!entity.alive) continue;
             
@@ -339,6 +344,15 @@ class Renderer {
                 ctx.fillRect(barX, hungerBarY, barWidth, 2);
                 ctx.fillStyle = '#FFaa00';
                 ctx.fillRect(barX, hungerBarY, barWidth * (entity.hunger / 100), 2);
+            }
+            
+            // 压注标记（战斗阶段显示）
+            if (gameState.betTarget === entity.id && gameState.phase === 'playing') {
+                const pulse = 0.6 + Math.sin(this.frame * 0.12) * 0.4;
+                ctx.fillStyle = `rgba(255, 215, 0, ${pulse})`;
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('🎲', centerX, py - 8);
             }
         }
     }
@@ -527,6 +541,194 @@ class Renderer {
         ctx.globalAlpha = 1;
     }
     
+    // 渲染压注阶段 UI
+    _renderBettingUI(ctx, gameState) {
+        const entities = gameState.entities;
+        const betTarget = gameState.betTarget;
+        const countdown = gameState.betCountdown;
+        
+        // === 顶部倒计时横幅 ===
+        const bannerH = 60;
+        const bannerY = 10;
+        
+        // 半透明背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(0, bannerY, this.mapWidth, bannerH);
+        
+        // 金色边框
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(2, bannerY, this.mapWidth - 4, bannerH);
+        
+        // 倒计时
+        ctx.textAlign = 'center';
+        
+        // 倒计时数字（大号）
+        const pulse = 1 + Math.sin(this.frame * 0.15) * 0.1;
+        ctx.save();
+        ctx.translate(this.mapWidth / 2, bannerY + 18);
+        ctx.scale(pulse, pulse);
+        ctx.fillStyle = countdown <= 5 ? '#FF4444' : '#FFD700';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.fillText(`${countdown}s`, 0, 0);
+        ctx.restore();
+        
+        // 提示文字
+        ctx.fillStyle = '#e0e0e0';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('观察战场，点击下方角色卡压注！', this.mapWidth / 2, bannerY + 48);
+        
+        // === 底部角色选择卡片 ===
+        const logY = this.mapHeight;
+        const cardAreaH = this.logHeight;
+        
+        // 替换日志区域为压注面板
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillRect(0, logY, this.mapWidth, cardAreaH);
+        
+        // 提示
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('🎯 点击选择压注目标（空格跳过）', 10, logY + 16);
+        
+        // 角色卡片
+        const cardCount = entities.length;
+        const cardW = (this.mapWidth - 20) / cardCount;
+        const cardH = cardAreaH - 30;
+        const cardY = logY + 24;
+        
+        for (let i = 0; i < cardCount; i++) {
+            const entity = entities[i];
+            const cardX = 10 + i * cardW;
+            const isSelected = betTarget === i;
+            
+            // 卡片背景
+            ctx.fillStyle = isSelected ? entity.color + '44' : 'rgba(30, 30, 50, 0.8)';
+            ctx.fillRect(cardX + 2, cardY, cardW - 4, cardH);
+            
+            // 选中边框
+            if (isSelected) {
+                ctx.strokeStyle = entity.color;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(cardX + 2, cardY, cardW - 4, cardH);
+                
+                // 选中标记
+                ctx.fillStyle = '#FFD700';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('✅ 已压注', cardX + cardW / 2, cardY + cardH - 4);
+            } else {
+                ctx.strokeStyle = '#444';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(cardX + 2, cardY, cardW - 4, cardH);
+            }
+            
+            // 角色圆圈
+            const circleX = cardX + cardW / 2;
+            const circleY = cardY + 22;
+            const r = 14;
+            
+            ctx.fillStyle = entity.color;
+            ctx.beginPath();
+            ctx.arc(circleX, circleY, r, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = isSelected ? '#FFD700' : '#fff';
+            ctx.lineWidth = isSelected ? 2 : 1;
+            ctx.beginPath();
+            ctx.arc(circleX, circleY, r, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // 名字首字
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(entity.name[0], circleX, circleY);
+            ctx.textBaseline = 'alphabetic';
+            
+            // 名字
+            ctx.fillStyle = entity.color;
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(entity.name, cardX + cardW / 2, cardY + 48);
+            
+            // 性格
+            ctx.fillStyle = '#888';
+            ctx.font = '9px sans-serif';
+            ctx.fillText(entity.personality.name, cardX + cardW / 2, cardY + 60);
+            
+            // HP
+            ctx.fillStyle = '#aaa';
+            ctx.font = '9px sans-serif';
+            ctx.fillText(`HP:${entity.hp}`, cardX + cardW / 2, cardY + 72);
+            
+            // 战力评分
+            const score = entity.getCombatScore();
+            ctx.fillStyle = score > 150 ? '#44ff44' : score > 100 ? '#FFaa00' : '#ff4444';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText(`⚡${score}`, cardX + cardW / 2, cardY + 84);
+        }
+        
+        // 右侧面板 - 压注状态
+        const panelX = this.mapWidth;
+        ctx.fillStyle = CONFIG.COLORS.PANEL_BG;
+        ctx.fillRect(panelX, 0, this.panelWidth, this.mapHeight + this.logHeight);
+        
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(panelX, 0);
+        ctx.lineTo(panelX, this.mapHeight + this.logHeight);
+        ctx.stroke();
+        
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🎲 压注阶段 🎲', panelX + this.panelWidth / 2, 25);
+        
+        if (betTarget !== null) {
+            const target = entities[betTarget];
+            ctx.fillStyle = target.color;
+            ctx.font = 'bold 18px sans-serif';
+            ctx.fillText(`已选择: ${target.name}`, panelX + this.panelWidth / 2, 60);
+            
+            ctx.fillStyle = CONFIG.COLORS.TEXT;
+            ctx.font = '12px sans-serif';
+            ctx.fillText(`性格: ${target.personality.name}`, panelX + this.panelWidth / 2, 85);
+            ctx.fillText(`HP: ${target.hp}  攻击: ${target.getAttackPower()}`, panelX + this.panelWidth / 2, 105);
+            ctx.fillText(`战力: ${target.getCombatScore()}`, panelX + this.panelWidth / 2, 125);
+        } else {
+            ctx.fillStyle = CONFIG.COLORS.TEXT_DIM;
+            ctx.font = '14px sans-serif';
+            ctx.fillText('点击下方角色卡选择', panelX + this.panelWidth / 2, 60);
+        }
+        
+        // 所有角色战力排行
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('📊 战力排行', panelX + 15, 165);
+        
+        const ranked = [...entities].sort((a, b) => b.getCombatScore() - a.getCombatScore());
+        let rankY = 185;
+        for (let i = 0; i < ranked.length; i++) {
+            const e = ranked[i];
+            const isBet = e.id === betTarget;
+            
+            ctx.fillStyle = isBet ? '#FFD700' : '#aaa';
+            ctx.font = (isBet ? 'bold ' : '') + '11px sans-serif';
+            ctx.fillText(`${i + 1}. ${e.name} ⚡${e.getCombatScore()}`, panelX + 15, rankY);
+            rankY += 16;
+        }
+        
+        // 操作提示
+        ctx.fillStyle = CONFIG.COLORS.TEXT_DIM;
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('空格 = 跳过倒计时开始战斗', panelX + this.panelWidth / 2, this.mapHeight + this.logHeight - 15);
+    }
+    
     // 渲染游戏结束
     _renderGameOver(ctx, gameState) {
         // 半透明遮罩
@@ -536,39 +738,72 @@ class Renderer {
         const centerX = this.mapWidth / 2;
         const centerY = this.mapHeight / 2;
         
-        // 胜利面板
+        // 根据压注结果调整面板
+        const betResult = gameState.betResult;
+        const panelW = 380;
+        const panelH = betResult ? 300 : 220;
+        
+        // 面板背景
+        let borderColor = '#FFD700';
+        if (betResult === 'win') borderColor = '#00FF88';
+        if (betResult === 'lose') borderColor = '#FF4444';
+        
         ctx.fillStyle = '#1a1a2e';
-        ctx.strokeStyle = '#FFD700';
+        ctx.strokeStyle = borderColor;
         ctx.lineWidth = 3;
-        const panelW = 340;
-        const panelH = 220;
         ctx.fillRect(centerX - panelW / 2, centerY - panelH / 2, panelW, panelH);
         ctx.strokeRect(centerX - panelW / 2, centerY - panelH / 2, panelW, panelH);
         
-        // 胜利文字
+        // 压注结果
+        if (betResult === 'win') {
+            // === 压注成功 ===
+            ctx.fillStyle = '#00FF88';
+            ctx.font = 'bold 36px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎉 压注成功！🎉', centerX, centerY - 80);
+            
+            ctx.fillStyle = '#88FFCC';
+            ctx.font = '16px sans-serif';
+            ctx.fillText('你的眼光真准！', centerX, centerY - 50);
+        } else if (betResult === 'lose') {
+            // === 压注失败 ===
+            ctx.fillStyle = '#FF4444';
+            ctx.font = 'bold 36px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('😢 压注失败', centerX, centerY - 80);
+            
+            ctx.fillStyle = '#FF8888';
+            ctx.font = '14px sans-serif';
+            const betEntity = gameState.entities[gameState.betTarget];
+            ctx.fillText(`${betEntity.name} 没能活到最后...`, centerX, centerY - 50);
+        }
+        
+        // 胜者信息
         const winner = gameState.winner;
+        const infoStartY = betResult ? centerY - 20 : centerY - 50;
+        
         if (winner) {
             ctx.fillStyle = winner.color;
-            ctx.font = 'bold 28px sans-serif';
+            ctx.font = 'bold 24px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(`🏆 ${winner.name} 获胜！`, centerX, centerY - 50);
+            ctx.fillText(`🏆 ${winner.name} 获胜！`, centerX, infoStartY);
             
             ctx.fillStyle = CONFIG.COLORS.TEXT;
-            ctx.font = '14px sans-serif';
-            ctx.fillText(`击杀: ${winner.kills}  回合: ${gameState.turn}`, centerX, centerY - 20);
+            ctx.font = '13px sans-serif';
+            ctx.fillText(`击杀: ${winner.kills}  回合: ${gameState.turn}`, centerX, infoStartY + 25);
             
             // 装备信息
-            ctx.font = '12px sans-serif';
+            ctx.font = '11px sans-serif';
             ctx.fillStyle = '#FFD700';
             const w = winner.weapon ? `⚔${winner.weapon.name}(+${winner.weapon.power})` : '⚔无';
             const a = winner.armor ? `🛡${winner.armor.name}(+${winner.armor.defense})` : '🛡无';
             const b = winner.boots ? `👢${winner.boots.name}(闪避${Math.floor(winner.boots.dodge*100)}%)` : '👢无';
-            ctx.fillText(`${w}  ${a}`, centerX, centerY + 10);
-            ctx.fillText(b, centerX, centerY + 30);
+            ctx.fillText(`${w}  ${a}`, centerX, infoStartY + 48);
+            ctx.fillText(b, centerX, infoStartY + 66);
         }
         
         ctx.fillStyle = CONFIG.COLORS.TEXT_DIM;
-        ctx.font = '12px sans-serif';
-        ctx.fillText('按 R 重新开始', centerX, centerY + 65);
+        ctx.font = '13px sans-serif';
+        ctx.fillText('按 R 重新开始', centerX, centerY + panelH / 2 - 20);
     }
 }
