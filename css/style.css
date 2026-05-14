@@ -1,0 +1,123 @@
+/* 全局样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0a0a1a;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* 头部标题 */
+.header {
+    text-align: center;
+    padding: 12px 0 8px;
+    width: 100%;
+    background: linear-gradient(180deg, #0f0f2a 0%, transparent 100%);
+}
+
+.header h1 {
+    font-size: 20px;
+    color: #FFD700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    letter-spacing: 2px;
+}
+
+.header .subtitle {
+    font-size: 12px;
+    color: #888;
+    margin-top: 4px;
+}
+
+/* 游戏容器 */
+.game-container {
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+}
+
+#gameCanvas {
+    border: 2px solid #333;
+    border-radius: 4px;
+    box-shadow: 0 0 30px rgba(0, 100, 255, 0.1);
+    image-rendering: pixelated;
+}
+
+/* 控制说明 */
+.controls-bar {
+    display: flex;
+    gap: 20px;
+    padding: 8px 20px;
+    background: #111122;
+    border-radius: 8px;
+    margin: 8px 0 20px;
+    border: 1px solid #222;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.control-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #888;
+}
+
+.control-item kbd {
+    background: #222;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: #e0e0e0;
+    font-family: monospace;
+}
+
+/* 图例 */
+.legend {
+    display: flex;
+    gap: 16px;
+    padding: 8px 20px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #888;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.legend-diamond {
+    width: 10px;
+    height: 10px;
+    transform: rotate(45deg);
+    display: inline-block;
+}
+
+/* 响应式 */
+@media (max-width: 1200px) {
+    #gameCanvas {
+        max-width: 95vw;
+        height: auto;
+    }
+}

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D 网格生存战</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="header">
+        <h1>⚔ 2D 网格生存战 ⚔</h1>
+        <div class="subtitle">8 位 AI 战士 · 最后存活者获胜 · 纯本地运行</div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <span class="legend-dot" style="background:#e94560;"></span> 食物
+        </div>
+        <div class="legend-item">
+            <span class="legend-diamond" style="background:#8B4513;"></span> 木棍 (+5)
+        </div>
+        <div class="legend-item">
+            <span class="legend-diamond" style="background:#C0C0C0;"></span> 铁剑 (+12)
+        </div>
+        <div class="legend-item">
+            <span class="legend-diamond" style="background:#FFD700;"></span> 神剑 (+25)
+        </div>
+        <div class="legend-item">
+            <span style="font-size:14px;">💀</span> 死亡位置
+        </div>
+    </div>
+
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div class="controls-bar">
+        <div class="control-item"><kbd>空格</kbd> 暂停/继续</div>
+        <div class="control-item"><kbd>R</kbd> 重新开始</div>
+        <div class="control-item"><kbd>1</kbd> 极慢</div>
+        <div class="control-item"><kbd>2</kbd> 正常</div>
+        <div class="control-item"><kbd>3</kbd> 较快</div>
+        <div class="control-item"><kbd>4</kbd> 极快</div>
+        <div class="control-item"><kbd>5</kbd> 闪电</div>
+    </div>
+
+    <!-- 脚本按依赖顺序加载 -->
+    <script src="js/config.js"></script>
+    <script src="js/grid.js"></script>
+    <script src="js/item.js"></script>
+    <script src="js/entity.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/combat.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
