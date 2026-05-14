@@ -804,6 +804,13 @@ class Renderer {
         
         ctx.fillStyle = CONFIG.COLORS.TEXT_DIM;
         ctx.font = '13px sans-serif';
-        ctx.fillText('按 R 重新开始', centerX, centerY + panelH / 2 - 20);
+        if (gameState.autoRestart) {
+            ctx.fillStyle = '#88AAFF';
+            ctx.fillText('🔁 自动连战中... 5秒后开始下一盘', centerX, centerY + panelH / 2 - 30);
+            ctx.fillStyle = CONFIG.COLORS.TEXT_DIM;
+            ctx.fillText('按 R 立即重开 | 关闭开关取消自动连战', centerX, centerY + panelH / 2 - 10);
+        } else {
+            ctx.fillText('按 R 重新开始', centerX, centerY + panelH / 2 - 20);
+        }
     }
 }

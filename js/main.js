@@ -1,4 +1,4 @@
-// 游戏主入口和主循环
+ // 游戏主入口和主循环
 
 // 游戏阶段
 const GAME_PHASE = {
@@ -32,6 +32,10 @@ class Game {
         this.betCountdown = CONFIG.BETTING_TIME;
         this.betTimer = null;
         this.betResult = null;       // 'win' | 'lose' | null
+        
+        // 自动连战
+        this.autoRestart = false;
+        this.autoRestartDelay = null;
         
         // 定时器
         this.tickTimer = null;
@@ -221,6 +225,19 @@ class Game {
                     important: true,
                 });
             }
+            
+            // 自动连战：5秒后自动开始下一盘
+            if (this.autoRestart) {
+                this.combatSystem.logs.unshift({
+                    turn: this.turn,
+                    text: '🔁 自动连战中... 5秒后开始下一盘',
+                    color: '#88AAFF',
+                    important: true,
+                });
+                this.autoRestartDelay = setTimeout(() => {
+                    this.restart();
+                }, 5000);
+            }
         }
     }
     
@@ -247,6 +264,7 @@ class Game {
             betTarget: this.betTarget,
             betCountdown: this.betCountdown,
             betResult: this.betResult,
+            autoRestart: this.autoRestart,
         };
     }
     
@@ -291,10 +309,23 @@ class Game {
         }
     }
     
+    // 公开方法：设置自动连战
+    setAutoRestart(enabled) {
+        this.autoRestart = enabled;
+        if (!enabled && this.autoRestartDelay) {
+            clearTimeout(this.autoRestartDelay);
+            this.autoRestartDelay = null;
+        }
+    }
+    
     // 公开方法：重新开始（按钮调用）
     restart() {
         if (this.betTimer) clearInterval(this.betTimer);
         if (this.tickTimer) clearInterval(this.tickTimer);
+        if (this.autoRestartDelay) {
+            clearTimeout(this.autoRestartDelay);
+            this.autoRestartDelay = null;
+        }
         this._initEntities();
         this._startGame();
     }
