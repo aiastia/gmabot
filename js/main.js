@@ -291,6 +291,14 @@ class Game {
         }
     }
     
+    // 公开方法：重新开始（按钮调用）
+    restart() {
+        if (this.betTimer) clearInterval(this.betTimer);
+        if (this.tickTimer) clearInterval(this.tickTimer);
+        this._initEntities();
+        this._startGame();
+    }
+    
     // 设置控制
     _setupControls() {
         document.addEventListener('keydown', (e) => {
@@ -307,9 +315,7 @@ class Game {
                     break;
                 case 'r':
                 case 'R':
-                    if (this.betTimer) clearInterval(this.betTimer);
-                    if (this.tickTimer) clearInterval(this.tickTimer);
-                    this._startGame();
+                    this.restart();
                     break;
                 case '1':
                     if (this.phase === GAME_PHASE.PLAYING) {
@@ -349,4 +355,5 @@ class Game {
 // 页面加载后启动游戏
 window.addEventListener('DOMContentLoaded', () => {
     const game = new Game();
+    window.gameInstance = game;
 });

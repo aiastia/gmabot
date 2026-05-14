@@ -35,13 +35,15 @@
     </div>
 
     <div class="controls-bar">
-        <div class="control-item"><kbd>空格</kbd> 暂停/继续</div>
+        <div class="control-item"><kbd>空格</kbd> 暂停/继续 / 跳过倒计时</div>
         <div class="control-item"><kbd>R</kbd> 重新开始</div>
-        <div class="control-item"><kbd>1</kbd> 极慢</div>
-        <div class="control-item"><kbd>2</kbd> 正常</div>
-        <div class="control-item"><kbd>3</kbd> 较快</div>
-        <div class="control-item"><kbd>4</kbd> 极快</div>
-        <div class="control-item"><kbd>5</kbd> 闪电</div>
+        <div class="control-item"><kbd>1-5</kbd> 速度调节</div>
+        <div class="control-item">
+            <button id="btnRestart" onclick="window.gameInstance && window.gameInstance.restart()" style="
+                background: #FFD700; color: #1a1a2e; border: none; padding: 4px 14px;
+                border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px;
+            ">🔄 重新开始</button>
+        </div>
     </div>
 
     <!-- 脚本按依赖顺序加载 -->
