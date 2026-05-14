@@ -50,6 +50,12 @@
                 🔁 自动连战
             </label>
         </div>
+        <div class="control-item">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#e0e0e0;font-size:13px;">
+                <input type="checkbox" id="bettingToggle" checked onchange="window.gameInstance && window.gameInstance.setBettingEnabled(this.checked)" style="width:16px;height:16px;accent-color:#FFD700;cursor:pointer;">
+                🎲 压注环节
+            </label>
+        </div>
     </div>
 
     <!-- 脚本按依赖顺序加载 -->

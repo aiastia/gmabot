@@ -37,6 +37,9 @@ class Game {
         this.autoRestart = false;
         this.autoRestartDelay = null;
         
+        // 压注开关
+        this.bettingEnabled = true;
+        
         // 定时器
         this.tickTimer = null;
         
@@ -85,15 +88,26 @@ class Game {
         this.itemManager.generate(this.grid);
         
         // 开始日志
-        this.combatSystem.logs.push({
-            turn: 0,
-            text: '🎮 新游戏开始！观察战场，选择你压注的战士！',
-            color: '#FFD700',
-            important: true,
-        });
-        
-        // 启动压注倒计时
-        this._startBettingCountdown();
+        if (this.bettingEnabled) {
+            this.combatSystem.logs.push({
+                turn: 0,
+                text: '🎮 新游戏开始！观察战场，选择你压注的战士！',
+                color: '#FFD700',
+                important: true,
+            });
+            // 启动压注倒计时
+            this._startBettingCountdown();
+        } else {
+            this.combatSystem.logs.push({
+                turn: 0,
+                text: '🎮 新游戏开始！直接开战！',
+                color: '#FFD700',
+                important: true,
+            });
+            // 跳过压注，直接战斗
+            this.betTarget = null;
+            this._startBattle();
+        }
         
         // 启动渲染循环
         this._renderLoop();
@@ -226,17 +240,17 @@ class Game {
                 });
             }
             
-            // 自动连战：5秒后自动开始下一盘
+            // 自动连战：10秒后自动开始下一盘
             if (this.autoRestart) {
                 this.combatSystem.logs.unshift({
                     turn: this.turn,
-                    text: '🔁 自动连战中... 5秒后开始下一盘',
+                    text: '🔁 自动连战中... 10秒后开始下一盘',
                     color: '#88AAFF',
                     important: true,
                 });
                 this.autoRestartDelay = setTimeout(() => {
                     this.restart();
-                }, 5000);
+                }, 10000);
             }
         }
     }
@@ -315,6 +329,17 @@ class Game {
         if (!enabled && this.autoRestartDelay) {
             clearTimeout(this.autoRestartDelay);
             this.autoRestartDelay = null;
+        }
+    }
+    
+    // 公开方法：设置压注开关
+    setBettingEnabled(enabled) {
+        this.bettingEnabled = enabled;
+        // 如果正在压注阶段且关闭了压注，立即开始战斗
+        if (!enabled && this.phase === GAME_PHASE.BETTING) {
+            clearInterval(this.betTimer);
+            this.betTarget = null;
+            this._startBattle();
         }
     }
     
